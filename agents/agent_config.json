@@ -1,0 +1,85 @@
+{
+  "system": "ARK95X-NEUROLINK",
+  "version": "2.0.0",
+  "dual_team_mode": true,
+  "nodes": {
+    "amara": {"host": "ark95x-amara", "role": "primary", "hw": "MagAce 2080", "os": "Win11 Pro"},
+    "arcx": {"host": "ark95x-arcx", "role": "secondary", "hw": "GM700", "os": "Win11 Pro"}
+  },
+  "agents": {
+    "alpha_lead": {
+      "name": "COMET-01", "model": "comet-browser", "node": "amara",
+      "capabilities": ["orchestration", "dispatch", "dashboard", "multi-tab", "browser-automation"],
+      "priority": 1, "max_concurrent": 6,
+      "advance_protocol": {
+        "pre_scan": true, "read_before_act": true, "ref_over_coords": true,
+        "error_learning": true, "pattern_passback": true
+      }
+    },
+    "bravo_code": {
+      "name": "ChatGPT-Pro", "model": "gpt-4o", "node": "amara",
+      "capabilities": ["powershell", "python", "json", "bootstrap", "code-review"],
+      "priority": 2, "max_concurrent": 3,
+      "mode_preference": "instant",
+      "known_issues": ["thinking_loop_timeout"],
+      "fix_protocol": "switch_to_instant_mode_on_hang"
+    },
+    "charlie_visual": {
+      "name": "Gemini-Pro", "model": "gemini-2.0", "node": "amara",
+      "capabilities": ["mindmap", "visuals", "charts", "verification", "drive-integration"],
+      "priority": 3, "max_concurrent": 2,
+      "known_issues": ["popup_overlay_block"],
+      "fix_protocol": "escape_key_dismiss_retry"
+    },
+    "delta_research": {
+      "name": "BlackBox-AI", "model": "blackbox", "node": "arcx",
+      "capabilities": ["research", "verification", "web_search", "code-explain"],
+      "priority": 4, "max_concurrent": 2
+    },
+    "echo_monitor": {
+      "name": "Mistral-Local", "model": "mistral", "node": "arcx",
+      "capabilities": ["health", "monitoring", "alerts", "scaling", "log-analysis"],
+      "priority": 5, "max_concurrent": 1, "local_ollama": true
+    },
+    "foxtrot_recover": {
+      "name": "CodeLlama-Local", "model": "codellama", "node": "arcx",
+      "capabilities": ["error_recovery", "passback", "retry_logic", "decomposition"],
+      "priority": 6, "max_concurrent": 1, "local_ollama": true
+    }
+  },
+  "passback_config": {
+    "max_retries": 3,
+    "backoff_base": 2,
+    "strategies": ["parallel_retry", "model_swap", "decompose", "node_failover", "escalate_dual"],
+    "escalation_threshold": 3,
+    "dual_team_on_escalate": true
+  },
+  "learned_patterns": {
+    "session_source": "COMET-01_APR2026",
+    "patterns": {
+      "thinking_loop": {"trigger": "stuck thinking >30s", "fix": "switch_mode_instant"},
+      "popup_block": {"trigger": "overlay blocks target", "fix": "escape_then_retry"},
+      "click_miss": {"trigger": "wrong element activated", "fix": "use_ref_not_coordinates"},
+      "content_lost": {"trigger": "form input disappeared", "fix": "restore_or_retype_via_ref"},
+      "nav_redirect": {"trigger": "landed wrong page", "fix": "back_navigate_use_ref"},
+      "stale_dom": {"trigger": "ref invalid after reload", "fix": "reread_page_fresh_refs"},
+      "large_payload": {"trigger": "form_input timeout", "fix": "reduce_content_size_retry"}
+    },
+    "auto_learn": true,
+    "save_path": "C:/ARK95X/config/learned_patterns.json"
+  },
+  "handoff_protocol": {
+    "format": "military_comms",
+    "callsigns": {"amara": "DELTA", "arcx": "CHARLIE", "orchestrator": "ALPHA-1"},
+    "status_codes": ["GREEN", "YELLOW", "RED"],
+    "task_naming": "NATO_phonetic",
+    "dashboard_sync": true,
+    "dashboard_url": "https://docs.google.com/document/d/16yzlmj-QLMdk4C-_p76mCuCW6Hv3BuzN5OQvyRDfS7M"
+  },
+  "upgrade_protocol": {
+    "self_upgrade": true,
+    "phase_upgrade_trigger": "every_10_tasks_or_3_errors",
+    "upgrade_actions": ["add_pattern", "reweight_agent_scores", "swap_model", "adjust_timeout"],
+    "metrics_path": "C:/ARK95X/reports/agent_metrics.json"
+  }
+}
