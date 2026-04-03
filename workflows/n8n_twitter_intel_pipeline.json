@@ -1,0 +1,184 @@
+{
+  "name": "ARK95X Twitter-X Intel Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */4 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.rss_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "rss-fetch",
+      "name": "RSS-Bridge Fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const accounts = [\n  {handle: '@karpathy', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=karpathy&format=Mrss'},\n  {handle: '@sama', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=sama&format=Mrss'},\n  {handle: '@AndrewYNg', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=AndrewYNg&format=Mrss'},\n  {handle: '@ylecun', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=ylecun&format=Mrss'},\n  {handle: '@demishassabis', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=demishassabis&format=Mrss'},\n  {handle: '@lexfridman', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=lexfridman&format=Mrss'},\n  {handle: '@kaifulee', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=kaifulee&format=Mrss'},\n  {handle: '@gaborcselle', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=gaborcselle&format=Mrss'},\n  {handle: '@drfeifei', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=drfeifei&format=Mrss'},\n  {handle: '@ESYudkowsky', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=ESYudkowsky&format=Mrss'},\n  {handle: '@gdb', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=gdb&format=Mrss'},\n  {handle: '@rasbt', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=rasbt&format=Mrss'},\n  {handle: '@alliekmiller', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=alliekmiller&format=Mrss'},\n  {handle: '@mattshumer_', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=mattshumer_&format=Mrss'},\n  {handle: '@OfficialLoganK', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=OfficialLoganK&format=Mrss'},\n  {handle: '@daborcselle', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=dair_ai&format=Mrss'},\n  {handle: '@JohnCarmack', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=ID_AA_Carmack&format=Mrss'},\n  {handle: '@abhi1thakur', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=abhi1thakur&format=Mrss'},\n  {handle: '@wellingmax', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=wellingmax&format=Mrss'},\n  {handle: '@timnitgebru', rss_url: 'http://localhost:3000/?action=display&bridge=TwitterBridge&context=By+username&u=timnitgebru&format=Mrss'}\n];\nreturn accounts.map(a => ({json: a}));"
+      },
+      "id": "account-list",
+      "name": "Account List Generator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const xml = $input.first().json.data;\nconst cheerio = require('cheerio');\nconst $ = cheerio.load(xml, {xmlMode: true});\nconst items = [];\n$('item').each((i, el) => {\n  items.push({\n    title: $(el).find('title').text(),\n    link: $(el).find('link').text(),\n    description: $(el).find('description').text(),\n    pubDate: $(el).find('pubDate').text(),\n    author: $(el).find('dc\\\\:creator').text() || $input.first().json.handle\n  });\n});\nreturn items.map(item => ({json: item}));"
+      },
+      "id": "xml-parse",
+      "name": "XML Parser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ARCX_IP:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama3.1\",\n  \"prompt\": \"SYSTEM: You are an intelligence analyst for ARK95X NEUROLINK. Extract structured intelligence from this social media post.\\n\\nPOST CONTENT:\\nAuthor: {{ $json.author }}\\nDate: {{ $json.pubDate }}\\nText: {{ $json.description }}\\n\\nExtract and return ONLY valid JSON:\\n{\\n  \\\"summary\\\": \\\"one-sentence summary\\\",\\n  \\\"topics\\\": [\\\"tag1\\\", \\\"tag2\\\"],\\n  \\\"sentiment\\\": \\\"positive|negative|neutral\\\",\\n  \\\"relevance_score\\\": 0.0-1.0,\\n  \\\"key_entities\\\": [\\\"entity1\\\", \\\"entity2\\\"],\\n  \\\"action_items\\\": [\\\"item1\\\"],\\n  \\\"threat_level\\\": \\\"none|low|medium|high\\\",\\n  \\\"category\\\": \\\"model_release|funding|research|policy|product|opinion|hiring\\\"\\n}\",\n  \"stream\": false\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "ollama-extract",
+      "name": "Ollama Extraction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.response;\ntry {\n  const jsonMatch = raw.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    const parsed = JSON.parse(jsonMatch[0]);\n    const original = $('Ollama Extraction').first().json;\n    return [{json: {\n      ...parsed,\n      original_author: $('XML Parser').first().json.author,\n      original_text: $('XML Parser').first().json.description,\n      original_link: $('XML Parser').first().json.link,\n      original_date: $('XML Parser').first().json.pubDate,\n      extracted_at: new Date().toISOString()\n    }}];\n  }\n  return [{json: {error: 'no_json_found', raw: raw}}];\n} catch(e) {\n  return [{json: {error: e.message, raw: raw}}];\n}"
+      },
+      "id": "json-parse",
+      "name": "JSON Parser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO intel_posts (author, original_text, original_link, original_date, summary, topics, sentiment, relevance_score, key_entities, action_items, threat_level, category, extracted_at) VALUES ('{{ $json.original_author }}', '{{ $json.original_text.replace(/'/g, \"''\") }}', '{{ $json.original_link }}', '{{ $json.original_date }}', '{{ $json.summary }}', '{{ JSON.stringify($json.topics) }}', '{{ $json.sentiment }}', {{ $json.relevance_score || 0 }}, '{{ JSON.stringify($json.key_entities) }}', '{{ JSON.stringify($json.action_items) }}', '{{ $json.threat_level }}', '{{ $json.category }}', '{{ $json.extracted_at }}');"
+      },
+      "id": "sqlite-store",
+      "name": "SQLite Store",
+      "type": "n8n-nodes-base.sqlite",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "sqlite": {
+          "id": "1",
+          "name": "ARK95X Intel DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.relevance_score }}",
+              "operation": "largerEqual",
+              "value2": 0.8
+            }
+          ]
+        }
+      },
+      "id": "high-relevance-filter",
+      "name": "High Relevance Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst fs = require('fs');\nconst alertPath = 'Z:\\\\ARK95X_SHARED\\\\outbox\\\\intel_alerts.jsonl';\nconst line = JSON.stringify({\n  timestamp: new Date().toISOString(),\n  author: item.original_author,\n  summary: item.summary,\n  category: item.category,\n  relevance: item.relevance_score,\n  threat: item.threat_level,\n  link: item.original_link\n}) + '\\n';\nfs.appendFileSync(alertPath, line);\nreturn [$input.first()];"
+      },
+      "id": "alert-writer",
+      "name": "Alert to Outbox",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 200]
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [{"node": "Account List Generator", "type": "main", "index": 0}]
+      ]
+    },
+    "Account List Generator": {
+      "main": [
+        [{"node": "RSS-Bridge Fetch", "type": "main", "index": 0}]
+      ]
+    },
+    "RSS-Bridge Fetch": {
+      "main": [
+        [{"node": "XML Parser", "type": "main", "index": 0}]
+      ]
+    },
+    "XML Parser": {
+      "main": [
+        [{"node": "Ollama Extraction", "type": "main", "index": 0}]
+      ]
+    },
+    "Ollama Extraction": {
+      "main": [
+        [{"node": "JSON Parser", "type": "main", "index": 0}]
+      ]
+    },
+    "JSON Parser": {
+      "main": [
+        [{"node": "SQLite Store", "type": "main", "index": 0}]
+      ]
+    },
+    "SQLite Store": {
+      "main": [
+        [{"node": "High Relevance Filter", "type": "main", "index": 0}]
+      ]
+    },
+    "High Relevance Filter": {
+      "main": [
+        [{"node": "Alert to Outbox", "type": "main", "index": 0}],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "ark95x-neurolink"
+  },
+  "tags": [
+    {"name": "ARK95X"},
+    {"name": "intel"},
+    {"name": "twitter"}
+  ]
+}
