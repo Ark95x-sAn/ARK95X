@@ -1,0 +1,62 @@
+{
+  "name": "ARK95X Orchestrator",
+  "nodes": [
+    {
+      "parameters": {"rule": {"interval": [{"field": "minutes", "minutesInterval": 15}]}},
+      "name": "Health Check Timer",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 300]
+    },
+    {
+      "parameters": {"url": "http://ark95x-amara:8000/api/health", "method": "GET"},
+      "name": "Check AMARA",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 200]
+    },
+    {
+      "parameters": {"url": "http://ark95x-arcx:8000/api/health", "method": "GET"},
+      "name": "Check ARCX",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 400]
+    },
+    {
+      "parameters": {"conditions": {"string": [{"value1": "={{$json.status}}", "value2": "healthy"}]}},
+      "name": "AMARA Healthy?",
+      "type": "n8n-nodes-base.if",
+      "position": [650, 200]
+    },
+    {
+      "parameters": {"url": "http://ark95x-amara:8000/api/tasks/dispatch", "method": "POST", "body": {"task": "={{$json.task}}", "target": "auto"}},
+      "name": "Dispatch Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [850, 300]
+    },
+    {
+      "parameters": {"url": "http://ark95x-amara:11434/api/generate", "method": "POST", "body": {"model": "mistral", "prompt": "={{$json.prompt}}"}},
+      "name": "Ollama Generate",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {"operation": "append", "sheetId": "ARK95X_Reports", "range": "Health!A:F"},
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [850, 500]
+    },
+    {
+      "parameters": {"path": "/webhook/ark95x", "method": "POST"},
+      "name": "External Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 500]
+    }
+  ],
+  "connections": {
+    "Health Check Timer": {"main": [[{"node": "Check AMARA"}, {"node": "Check ARCX"}]]},
+    "Check AMARA": {"main": [[{"node": "AMARA Healthy?"}]]},
+    "AMARA Healthy?": {"main": [[{"node": "Dispatch Task"}], [{"node": "Log to Sheets"}]]},
+    "External Webhook": {"main": [[{"node": "Dispatch Task"}]]},
+    "Dispatch Task": {"main": [[{"node": "Ollama Generate"}, {"node": "Log to Sheets"}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"version": "1.0.0", "system": "ARK95X-NEUROLINK"}
+}
