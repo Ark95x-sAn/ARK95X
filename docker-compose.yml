@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # ARK95X Dashboard - Streamlit UI
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: ark95x-dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - TOAST_CSV_DIR=/data/toast
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/data
+      - ./logs:/app/logs
+    depends_on:
+      - ollama
+      - n8n
+    restart: unless-stopped
+    networks:
+      - ark95x-net
+
+  # Ollama - Local LLM Server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ark95x-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - ark95x-net
+
+  # n8n - Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ark95x-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_AUTH:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-ark95x}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASS:-changeme}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-ark95x-secret}
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./workflows:/home/node/workflows
+    restart: unless-stopped
+    networks:
+      - ark95x-net
+
+  # Toast POS Audit Service
+  toast-audit:
+    build:
+      context: .
+      dockerfile: Dockerfile.audit
+    container_name: ark95x-toast-audit
+    environment:
+      - TOAST_CSV_DIR=/data/toast
+      - VOID_THRESHOLD=${VOID_THRESHOLD:-5.0}
+      - COMP_THRESHOLD=${COMP_THRESHOLD:-3.0}
+      - ALERT_WEBHOOK=${ALERT_WEBHOOK}
+    volumes:
+      - ./data/toast:/data/toast
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - ark95x-net
+
+  # Watchdog - System Monitor
+  watchdog:
+    build:
+      context: .
+      dockerfile: Dockerfile.watchdog
+    container_name: ark95x-watchdog
+    environment:
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-300}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - N8N_HOST=http://n8n:5678
+      - DASHBOARD_HOST=http://dashboard:8501
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - ollama
+      - n8n
+      - dashboard
+    restart: unless-stopped
+    networks:
+      - ark95x-net
+
+  # Benchmark Runner
+  benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: ark95x-benchmark
+    environment:
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - BENCHMARK_MODELS=${BENCHMARK_MODELS:-gemma4,llama3,mistral}
+    volumes:
+      - ./data/benchmarks:/data/benchmarks
+      - ./logs:/app/logs
+    depends_on:
+      - ollama
+    profiles:
+      - benchmark
+    networks:
+      - ark95x-net
+
+volumes:
+  ollama-models:
+  n8n-data:
+
+networks:
+  ark95x-net:
+    driver: bridge
