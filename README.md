@@ -127,3 +127,65 @@ All 4 GREEN = **NEUROLINK ACTIVE**
 
 ---
 *ALPHA-1 ACTUAL // BLACK OPS COMET-01*
+
+
+## Quick Start - Docker Deployment
+
+### Prerequisites
+- Docker & Docker Compose v2+
+- NVIDIA GPU with drivers (for Ollama)
+- Git
+
+### Clone & Deploy
+```bash
+git clone https://github.com/Ark95x-sAn/ARK95X.git
+cd ARK95X
+cp .env.example .env
+# Edit .env with your settings
+docker compose up -d
+```
+
+### Services
+| Service | Port | Description |
+|---------|------|-------------|
+| Dashboard | 8501 | Streamlit 6-panel UI |
+| Ollama | 11434 | Local LLM server |
+| n8n | 5678 | Workflow automation |
+| Toast Audit | - | POS sales audit engine |
+| Watchdog | - | System health monitor |
+| Benchmark | - | Model performance tester |
+
+### Pull Ollama Models
+```bash
+docker exec ark95x-ollama ollama pull gemma4
+docker exec ark95x-ollama ollama pull llama3
+docker exec ark95x-ollama ollama pull mistral
+```
+
+### Run Benchmark (optional)
+```bash
+docker compose --profile benchmark up benchmark
+```
+
+### Toast POS Audit
+Export CSVs from Toast Back Office > Reporting, place in `data/toast/`, then:
+```bash
+python services/toast_audit.py --csv data/toast/sales.csv data/toast/voids.csv data/toast/comps.csv
+```
+
+### n8n Workflows
+Import `workflows/toast_monitor.json` into n8n at http://localhost:5678 for automated 6-hour Toast monitoring with webhook alerts.
+
+## Project Structure
+```
+ARK95X/
+├── agents/           # AI agent configs
+├── dashboard/        # Streamlit dashboard
+├── scripts/          # Benchmark & utility scripts
+├── services/         # Core services (audit, watchdog, router)
+├── workflows/        # n8n workflow definitions
+├── docker-compose.yml
+├── .env.example
+├── requirements.txt
+└── README.md
+```
