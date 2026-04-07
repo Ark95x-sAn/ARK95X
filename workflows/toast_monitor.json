@@ -1,0 +1,73 @@
+{
+  "name": "Toast POS Monitor - ARK95X",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "hours", "hoursInterval": 6}]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "command": "cd /data/toast && python /app/services/toast_audit.py --csv sales.csv voids.csv comps.csv --format json"
+      },
+      "name": "Run Toast Audit",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [470, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = JSON.parse($input.first().json.stdout);\nconst alerts = [];\nif (data.void_pct > 5.0) alerts.push('VOID ALERT: ' + data.void_pct + '%');\nif (data.comp_pct > 3.0) alerts.push('COMP ALERT: ' + data.comp_pct + '%');\nif (data.anomalies && data.anomalies.length > 0) alerts.push('ANOMALIES: ' + data.anomalies.length + ' found');\nreturn [{json: {alerts, data, has_alerts: alerts.length > 0}}];"
+      },
+      "name": "Parse Results",
+      "type": "n8n-nodes-base.code",
+      "position": [690, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{"value1": "={{$json.has_alerts}}", "value2": true}]
+        }
+      },
+      "name": "Check Alerts",
+      "type": "n8n-nodes-base.if",
+      "position": [910, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "={{$env.ALERT_WEBHOOK}}",
+        "method": "POST",
+        "body": "={\"text\": \"ARK95X Toast Alert:\\n\" + $json.alerts.join('\\n')}"
+      },
+      "name": "Send Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1130, 200],
+      "typeVersion": 4
+    },
+    {
+      "parameters": {
+        "command": "echo '[ARK95X] Toast audit complete - no alerts' >> /app/logs/toast_monitor.log"
+      },
+      "name": "Log OK",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [1130, 400],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {"main": [[{"node": "Run Toast Audit", "type": "main", "index": 0}]]},
+    "Run Toast Audit": {"main": [[{"node": "Parse Results", "type": "main", "index": 0}]]},
+    "Parse Results": {"main": [[{"node": "Check Alerts", "type": "main", "index": 0}]]},
+    "Check Alerts": {"main": [[{"node": "Send Alert", "type": "main", "index": 0}], [{"node": "Log OK", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "tags": [{"name": "ark95x"}, {"name": "toast"}, {"name": "audit"}]
+}
