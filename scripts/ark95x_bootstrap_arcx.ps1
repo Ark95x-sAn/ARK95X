@@ -18,8 +18,14 @@ if($TailscaleKey -and !$DryRun){ & 'C:\Program Files\Tailscale\tailscale.exe' up
 if(!$DryRun){ python -m pip install fastapi uvicorn httpx pydantic aiohttp }
 
 # Phase 7-8: SMB + Firewall
-if(!$DryRun -and !(Get-SmbShare 'ARK95X' -EA 0)){ New-SmbShare -Name 'ARK95X' -Path 'C:\ARK95X' -FullAccess Everyone }
-@(@{N='Ollama';P=11434},@{N='FastAPI';P=8000},@{N='n8n';P=5678}) | %{ if(!$DryRun){ New-NetFirewallRule -DisplayName "ARK95X-$($_.N)" -Direction Inbound -Protocol TCP -LocalPort $_.P -Action Allow -EA 0 } }
+# Do not grant Everyone full control. Prefer ARK95X_SHARE_USER, else Administrators only.
+if(!$DryRun -and !(Get-SmbShare 'ARK95X' -EA 0)){
+  $shareUser = if($env:ARK95X_SHARE_USER){$env:ARK95X_SHARE_USER}else{'Administrators'}
+  New-SmbShare -Name 'ARK95X' -Path 'C:\ARK95X' -FullAccess $shareUser
+}
+# Restrict inbound service ports to the peer (AmaraIP) or the Tailscale CGNAT range.
+$fwRemote = if($AmaraIP){$AmaraIP}else{'100.64.0.0/10'}
+@(@{N='Ollama';P=11434},@{N='FastAPI';P=8000},@{N='n8n';P=5678}) | %{ if(!$DryRun){ New-NetFirewallRule -DisplayName "ARK95X-$($_.N)" -Direction Inbound -Protocol TCP -LocalPort $_.P -RemoteAddress $fwRemote -Action Allow -EA 0 } }
 
 # Phase 9-10: Router + Tasks
 if(!$DryRun -and $AmaraIP){ (gc 'C:\ARK95X\services\comet_router.py') -replace 'AMARA_IP_PLACEHOLDER',$AmaraIP | sc 'C:\ARK95X\services\comet_router.py' }
