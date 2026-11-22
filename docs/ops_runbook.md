@@ -93,7 +93,7 @@ net use Z: \\ARCX_IP\ARK95X_SHARED /persistent:yes
 Get-SmbShare | Where-Object Name -eq "ARK95X_SHARED"
 
 # Recreate share if needed
-New-SmbShare -Name "ARK95X_SHARED" -Path "C:\ARK95X_SHARED" -FullAccess "Everyone"
+New-SmbShare -Name "ARK95X_SHARED" -Path "C:\ARK95X_SHARED" -FullAccess "Administrators"
 ```
 
 ### Tailscale Connection Lost

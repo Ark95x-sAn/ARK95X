@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile.dashboard
     container_name: ark95x-dashboard
     ports:
-      - "8501:8501"
+      - "127.0.0.1:8501:8501"
     environment:
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
       - TOAST_CSV_DIR=/data/toast
@@ -27,8 +27,8 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: ark95x-ollama
-    ports:
-      - "11434:11434"
+    expose:
+      - "11434"
     volumes:
       - ollama-models:/root/.ollama
     deploy:
@@ -47,13 +47,10 @@ services:
     image: n8nio/n8n:latest
     container_name: ark95x-n8n
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=${N8N_AUTH:-true}
-      - N8N_BASIC_AUTH_USER=${N8N_USER:-ark95x}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASS:-changeme}
       - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678}
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-ark95x-secret}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:?set N8N_ENCRYPTION_KEY to a long random value}
     volumes:
       - n8n-data:/home/node/.n8n
       - ./workflows:/home/node/workflows
