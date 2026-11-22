@@ -44,7 +44,7 @@
       "position": [850, 500]
     },
     {
-      "parameters": {"path": "/webhook/ark95x", "method": "POST"},
+      "parameters": {"path": "/webhook/ark95x", "method": "POST", "authentication": "headerAuth"},
       "name": "External Webhook",
       "type": "n8n-nodes-base.webhook",
       "position": [250, 500]
