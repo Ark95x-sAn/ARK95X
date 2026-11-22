@@ -3,7 +3,7 @@ ARK95X NEUROLINK // COMET ROUTER
 FastAPI broker between AMARA browser agents and Ollama on ARCX
 Deploy on ARCX: python comet_router.py
 """
-import os, json, time, uuid, logging
+import os, json, time, uuid, logging, hmac, sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -17,7 +17,10 @@ APP_VERSION = "1.0.0"
 ROUTER_BIND_HOST = os.getenv("COMET_ROUTER_HOST", "0.0.0.0")
 ROUTER_BIND_PORT = int(os.getenv("COMET_ROUTER_PORT", "8000"))
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-ROUTER_AUTH_TOKEN = os.getenv("COMET_ROUTER_TOKEN", "CHANGE-ME-NOW")
+_PLACEHOLDER_TOKENS = {"", "CHANGE-ME-NOW", "REPLACE-WITH-A-LONG-RANDOM-SECRET"}
+ROUTER_AUTH_TOKEN = os.getenv("COMET_ROUTER_TOKEN", "").strip()
+if ROUTER_AUTH_TOKEN in _PLACEHOLDER_TOKENS:
+    sys.exit("COMET_ROUTER_TOKEN must be set to a non-default secret before starting the router")
 LOG_DIR = Path(os.getenv("COMET_LOG_DIR", r"C:\ARK95X_SHARED\logs"))
 LOG_FILE = LOG_DIR / "router.log"
 UPSTREAM_TIMEOUT = float(os.getenv("COMET_ROUTER_TIMEOUT", "300"))
@@ -55,7 +58,7 @@ def validate_token(x_auth_token, authorization):
         if len(parts) == 2 and parts[0].lower() == "bearer":
             bearer = parts[1].strip()
     presented = x_auth_token or bearer
-    if not presented or presented != ROUTER_AUTH_TOKEN:
+    if not presented or not hmac.compare_digest(presented, ROUTER_AUTH_TOKEN):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 async def check_ollama():
